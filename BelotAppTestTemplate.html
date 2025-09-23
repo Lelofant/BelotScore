@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Белот Точкуване</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'belot-red': '#c53030',
+                        'belot-blue': '#2b6cb0',
+                        'belot-green': '#38a169',
+                        'belot-gold': '#d69e2e',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f4f8;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+        .screen {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.3s;
+            background-color: inherit;
+            flex-direction: column;
+        }
+        .active-screen { display: flex; }
+        .history-item { border-left: 4px solid #2b6cb0; }
+        .dark-mode { background-color: #1a202c; color: #e2e8f0; }
+        .dark-mode .max-w-md, .dark-mode .card, .dark-mode .history-item { background-color: #2d3748; }
+        .dark-mode input, .dark-mode button:not(.bg-belot-blue):not(.bg-belot-red):not(.bg-belot-green):not(.bg-belot-gold) {
+            background-color: #4a5568; color: #e2e8f0; border-color: #4a5568;
+        }
+        .dark-mode .bg-gray-100 { background-color: #4a5568; }
+        .dark-mode .text-gray-600, .dark-mode .text-gray-800 { color: #a0aec0; }
+        .dark-mode button:disabled { background-color: #2d3748; color: #718096; }
+        button.bg-gray-200:active { background-color: #d1d5db; }
+
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .dealer-quadrant {
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.25rem; cursor: pointer;
+            transition: background-color 0.2s; background-color: #e2e8f0; color: #4a5568;
+        }
+        .dark-mode .dealer-quadrant { background-color: #4a5568; color: #e2e8f0; }
+        .dealer-quadrant:nth-child(1) { border-top-left-radius: 100%; }
+        .dealer-quadrant:nth-child(2) { border-top-right-radius: 100%; }
+        .dealer-quadrant:nth-child(3) { border-bottom-left-radius: 100%; }
+        .dealer-quadrant:nth-child(4) { border-bottom-right-radius: 100%; }
+        .dealer-quadrant:hover { background-color: #d69e2e; color: white; }
+        .dealer-quadrant span { transform: rotate(-45deg); }
+        .bonus-button { position: relative; overflow: hidden; }
+        .floating-points {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); font-size: 1.25rem; font-weight: bold;
+            color: #38a169; pointer-events: none;
+            animation: float-up 1s ease-out forwards;
+        }
+        @keyframes float-up {
+            0% { opacity: 1; transform: translate(-50%, -50%) translateY(0); }
+            100% { opacity: 0; transform: translate(-50%, -50%) translateY(-50px); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="max-w-md mx-auto h-screen relative overflow-hidden bg-white">
+        <div id="start-screen" class="screen active-screen p-6 justify-center">
+            <div class="flex flex-col items-center w-full">
+                <div class="mb-8 text-center">
+                    <div class="w-24 h-24 mx-auto bg-gradient-to-r from-belot-red to-belot-blue rounded-full flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-layer-group text-white text-4xl"></i>
+                    </div>
+                    <h1 class="text-3xl font-bold text-gray-800">Белот Точкуване</h1>
+                    <p class="text-gray-600 mt-2">Автоматично изчисляване на точки</p>
+                </div>
+                
+                <div class="w-full space-y-4">
+                    <div class="card p-4">
+                        <div class="flex justify-between text-lg">
+                            <span class="text-belot-blue font-medium">Ние: <span id="my-team-total">0</span></span>
+                            <span class="text-belot-red font-medium">Вие: <span id="opponent-total">0</span></span>
+                        </div>
+                        <div class="text-center mt-2">
+                            <span class="text-sm text-gray-600">Победи: <span id="total-wins" class="font-medium">0:0</span></span>
+                        </div>
+                        <button onclick="resetGame()" class="w-full mt-3 py-2 bg-gray-200 rounded-lg font-medium">Нулирай играта</button>
+                    </div>
+                    <button onclick="showScreen('scan-mode-screen')" class="w-full py-4 bg-belot-blue text-white rounded-xl font-medium flex items-center justify-center text-lg"><i class="fas fa-camera mr-3"></i> Сканирай карти</button>
+                    <button onclick="showScreen('manual-mode-screen')" class="w-full py-4 bg-gray-200 text-gray-800 rounded-xl font-medium flex items-center justify-center text-lg"><i class="fas fa-keyboard mr-3"></i> Ръчно въведи точки</button>
+                    <div class="flex justify-between mt-8">
+                        <button onclick="showScreen('history-screen')" class="px-4 py-2 bg-gray-100 rounded-lg" aria-label="История"><i class="fas fa-history text-belot-blue"></i></button>
+                        <button onclick="toggleDarkMode()" class="px-4 py-2 bg-gray-100 rounded-lg" aria-label="Тъмен режим"><i id="dark-mode-icon" class="fas fa-moon text-gray-700"></i></button>
+                        <button onclick="showScreen('settings-screen')" class="px-4 py-2 bg-gray-100 rounded-lg" aria-label="Настройки"><i class="fas fa-cog text-gray-700"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="scan-mode-screen" class="screen p-6"></div>
+        <div id="manual-mode-screen" class="screen p-6"></div>
+
+        <div id="scan-bonus-screen" class="screen p-6">
+             <div class="flex items-center mb-6">
+                <button onclick="showScreen('scan-mode-screen')" class="p-2 rounded-full bg-gray-100"><i class="fas fa-arrow-left text-gray-700"></i></button>
+                <h2 class="text-2xl font-bold ml-4">Добавяне на Бонуси</h2>
+            </div>
+            <div class="card p-4 mb-4 text-center">
+                 <h3 class="font-medium text-lg">Точки от сканиране:</h3>
+                 <p id="scanned-points-display" class="text-4xl font-bold text-belot-blue">0</p>
+            </div>
+            <div class="card p-4">
+                <h3 class="font-medium mb-3 text-center text-lg">Добавете бонуси (премии)</h3>
+                <div id="scan-bonuses-container" class="grid grid-cols-3 gap-2"></div>
+            </div>
+            <button onclick="submitBonuses('scan')" class="w-full py-4 mt-auto bg-belot-blue text-white rounded-xl font-medium text-lg">Изчисли резултат</button>
+        </div>
+
+        <div id="manual-input-screen" class="screen p-6">
+            <div class="flex items-center mb-6">
+                <button onclick="showScreen('manual-mode-screen')" class="p-2 rounded-full bg-gray-100"><i class="fas fa-arrow-left text-gray-700"></i></button>
+                <h2 class="text-2xl font-bold ml-4">Ръчно въвеждане</h2>
+            </div>
+            <div class="card p-4 mb-4">
+                <h3 class="font-medium mb-3 text-center text-lg">1. Въведете точки от карти</h3>
+                <input type="number" id="manual-points-input" inputmode="numeric" class="w-full p-4 text-3xl border-2 border-gray-200 rounded-xl text-center" placeholder="0" max="260">
+            </div>
+            <div class="card p-4">
+                <h3 class="font-medium mb-3 text-center text-lg">2. Добавете бонуси (премии)</h3>
+                <div id="manual-bonuses-container" class="grid grid-cols-3 gap-2"></div>
+            </div>
+            <button onclick="submitBonuses('manual')" class="w-full py-4 mt-auto bg-belot-blue text-white rounded-xl font-medium text-lg">Изчисли резултат</button>
+        </div>
+
+        <div id="confirm-screen" class="screen p-6 justify-center">
+            <div class="flex flex-col items-center text-center w-full">
+                <h2 class="text-2xl font-bold mb-6">Резултат от ръката</h2>
+                <div class="w-full card p-6 mb-6">
+                    <div class="mb-4">
+                        <div class="text-5xl font-bold text-belot-blue" id="raw-points">0</div>
+                        <div class="text-gray-600">Сурови точки</div>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-bold text-belot-green" id="added-points">0</div>
+                        <div class="text-gray-600">Точки за добавяне</div>
+                    </div>
+                </div>
+                <h3 class="font-medium mb-3">Добави точките към:</h3>
+                <div class="grid grid-cols-2 gap-4 w-full">
+                    <button onclick="addPointsToTeam('myTeam')" class="py-3 bg-belot-blue text-white rounded-lg font-medium">Ние</button>
+                    <button onclick="addPointsToTeam('opponent')" class="py-3 bg-belot-red text-white rounded-lg font-medium">Вие</button>
+                </div>
+                <button onclick="showScreen('start-screen')" class="mt-4 px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium">Отказ</button>
+            </div>
+        </div>
+
+        <div id="history-screen" class="screen p-6">
+            <div class="flex items-center mb-6 flex-shrink-0">
+                <button onclick="showScreen('start-screen')" class="p-2 rounded-full bg-gray-100"><i class="fas fa-arrow-left text-gray-700"></i></button>
+                <h2 class="text-2xl font-bold ml-4">История</h2>
+            </div>
+            <div id="history-list" class="space-y-3 flex-grow overflow-y-auto pr-2">
+                <div class="text-center py-8 text-gray-500">Няма записани ръце.</div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mt-4 flex-shrink-0">
+                <button id="undo-button" onclick="undoLastHand()" class="w-full py-2 bg-belot-gold text-white rounded-lg font-medium">
+                    <i class="fas fa-undo mr-1"></i> Отмени Последно
+                </button>
+                <button onclick="clearHistory()" class="w-full py-2 bg-belot-red text-white rounded-lg font-medium">
+                    <i class="fas fa-trash mr-1"></i> Изчисти Всичко
+                </button>
+            </div>
+        </div>
+
+        <div id="settings-screen" class="screen p-6">
+            <div class="flex items-center mb-6">
+                <button onclick="showScreen('start-screen')" class="p-2 rounded-full bg-gray-100"><i class="fas fa-arrow-left text-gray-700"></i></button>
+                <h2 class="text-2xl font-bold ml-4">Настройки</h2>
+            </div>
+             <div class="card p-6 rounded-xl">
+                <h3 class="font-medium text-lg mb-4">Информация</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between"><span class="text-gray-600">Версия</span><span>1.5.0</span></div>
+                    <div class="flex items-center justify-between"><span class="text-gray-600">Разработчик</span><span>Белот Екип</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="victory-container" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+            <div class="absolute inset-0 bg-black bg-opacity-70"></div>
+            <div id="confetti-container" class="absolute inset-0"></div>
+            <div class="relative z-10 text-center p-8 bg-white rounded-xl max-w-sm card">
+                <div class="text-6xl mb-4">🎉</div>
+                <h2 id="victory-message" class="text-2xl font-bold mb-2">ПОБЕДА!</h2>
+                <p id="victory-submessage" class="mb-4">Отборът Ви достигна 151 точки!</p>
+                <button onclick="hideVictory()" class="px-6 py-2 bg-belot-blue text-white rounded-lg font-medium">Нова игра</button>
+            </div>
+        </div>
+        
+        <button id="dealer-fab" onclick="showDealerModal()" class="fixed bottom-20 right-5 z-20 w-14 h-14 bg-belot-gold text-white rounded-full shadow-lg flex items-center justify-center text-xl font-bold">?</button>
+
+        <div id="dealer-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center">
+            <div class="absolute inset-0 bg-black bg-opacity-60" onclick="hideDealerModal()"></div>
+            <div class="relative bg-white dark:bg-gray-800 rounded-xl p-6 card">
+                <h3 class="font-medium text-center text-lg mb-4">Избери кой раздава пръв</h3>
+                <div class="relative w-40 h-40 mx-auto">
+                    <div id="dealer-selector" class="w-full h-full rounded-full grid grid-cols-2 grid-rows-2 gap-1 transform rotate-45">
+                        <div class="dealer-quadrant" data-dealer-index="0"><span>N</span></div>
+                        <div class="dealer-quadrant" data-dealer-index="1"><span>E</span></div>
+                        <div class="dealer-quadrant" data-dealer-index="3"><span>W</span></div>
+                        <div class="dealer-quadrant" data-dealer-index="2"><span>S</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- STATE MANAGEMENT ---
+        const state = {
+            currentMode: null,
+            modifiers: { contra: false, recontra: false },
+            scores: { myTeam: 0, opponent: 0 },
+            wins: { myTeam: 0, opponent: 0 },
+            darkMode: false,
+            pendingPoints: { raw: 0, rounded: 0, fromScan: 0, bonus: 0 },
+            dealer: { current: null, positions: ['N', 'E', 'S', 'W'], isSet: false },
+            history: []
+        };
+        const dom = {};
+
+        // --- INITIALIZATION ---
+        function initDOM() {
+            const ids = [
+                'start-screen', 'scan-mode-screen', 'manual-mode-screen', 'scan-bonus-screen', 'manual-input-screen', 'confirm-screen', 'history-screen', 'settings-screen',
+                'my-team-total', 'opponent-total', 'total-wins', 'dark-mode-icon', 'history-list', 'victory-container', 'victory-message', 'victory-submessage',
+                'scanned-points-display', 'scan-bonuses-container', 'manual-points-input', 'manual-bonuses-container', 'raw-points', 'added-points',
+                'dealer-fab', 'dealer-modal', 'undo-button'
+            ];
+            ids.forEach(id => {
+                if(id) dom[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = document.getElementById(id);
+            });
+            dom.screens = document.querySelectorAll('.screen');
+            dom.dealerQuadrants = document.querySelectorAll('#dealer-selector .dealer-quadrant');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initDOM();
+            createModeSelectionScreen('scan');
+            createModeSelectionScreen('manual');
+            setupDealerInteraction();
+            updateDealerDisplay();
+            updateScoresDisplay();
+            updateHistoryDisplay();
+            if (localStorage.getItem('darkMode') === 'true') toggleDarkMode();
+        });
+
+        // --- UI & SCREEN MANAGEMENT ---
+        function showScreen(screenId) {
+            dom.screens.forEach(screen => screen.classList.remove('active-screen'));
+            dom[screenId.replace(/-(\w)/g, (m, g) => g.toUpperCase())].classList.add('active-screen');
+            if (screenId === 'scan-mode-screen' || screenId === 'manual-mode-screen') resetModeAndModifiers();
+        }
+
+        function createModeSelectionScreen(type) {
+            const isScan = type === 'scan';
+            const targetScreenId = isScan ? 'scan-mode-screen' : 'manual-mode-screen';
+            let nextScreenId = isScan ? 'scan-bonus-screen' : 'manual-input-screen';
+            const proceedFunction = isScan ? `proceedToScanOrBonus()` : `proceedToNextStep('${nextScreenId}')`;
+            
+            const screen = dom[targetScreenId.replace(/-(\w)/g, (m, g) => g.toUpperCase())];
+            screen.innerHTML = `
+                <div class="flex items-center mb-6">
+                    <button onclick="showScreen('start-screen')" class="p-2 rounded-full bg-gray-100"><i class="fas fa-arrow-left text-gray-700"></i></button>
+                    <h2 class="text-2xl font-bold ml-4">${isScan ? 'Сканиране' : 'Ръчно'}: Режим</h2>
+                </div>
+                <div class="space-y-4">
+                    <div class="card p-6 rounded-xl"><h3 class="font-medium text-lg mb-2">Избери режим</h3><div class="space-y-3" id="${targetScreenId}-modes">
+                        <button onclick="selectMode('on-suit', this)" class="w-full py-3 bg-gray-200 text-gray-800 rounded-lg font-medium">На боя</button>
+                        <button onclick="selectMode('no-trump', this)" class="w-full py-3 bg-gray-200 text-gray-800 rounded-lg font-medium">Без коз</button>
+                        <button onclick="selectMode('all-trump', this)" class="w-full py-3 bg-gray-200 text-gray-800 rounded-lg font-medium">Всичко коз</button>
+                    </div></div>
+                    <div class="card p-6 rounded-xl"><h3 class="font-medium text-lg mb-2">Модификатори</h3><div class="grid grid-cols-2 gap-3" id="${targetScreenId}-modifiers">
+                        <button onclick="toggleModifier('contra', this)" class="py-2 bg-gray-200 text-gray-800 rounded-lg font-medium">Контра</button>
+                        <button onclick="toggleModifier('recontra', this)" class="py-2 bg-gray-200 text-gray-800 rounded-lg font-medium">Реконтра</button>
+                    </div></div>
+                    <button onclick="${proceedFunction}" class="w-full py-3 bg-belot-blue text-white rounded-xl font-medium mt-6">Продължи</button>
+                </div>`;
+        }
+
+        function toggleDarkMode() {
+            state.darkMode = !state.darkMode;
+            document.body.classList.toggle('dark-mode', state.darkMode);
+            dom.darkModeIcon.className = state.darkMode ? 'fas fa-sun text-yellow-400' : 'fas fa-moon text-gray-700';
+            localStorage.setItem('darkMode', state.darkMode);
+        }
+
+        // --- DEALER & UNDO LOGIC ---
+        function showDealerModal() {
+            if (state.dealer.isSet) return;
+            dom.dealerModal.classList.remove('hidden');
+        }
+
+        function hideDealerModal() {
+            dom.dealerModal.classList.add('hidden');
+        }
+
+        function setupDealerInteraction() {
+            dom.dealerQuadrants.forEach(quad => {
+                quad.onclick = () => {
+                    const index = parseInt(quad.dataset.dealerIndex);
+                    state.dealer.current = index;
+                    state.dealer.isSet = true;
+                    updateDealerDisplay();
+                    hideDealerModal();
+                };
+            });
+        }
+        
+        function undoLastHand() {
+            if (state.history.length === 0) return;
+            if (confirm('Сигурни ли сте, че искате да отмените последната ръка?')) {
+                const lastHand = state.history.pop();
+                state.scores[lastHand.team] -= lastHand.points;
+                state.dealer.current = (state.dealer.current - 1 + 4) % 4; // Rewind dealer
+                updateScoresDisplay();
+                updateHistoryDisplay();
+                updateDealerDisplay();
+            }
+        }
+
+        // --- GAME LOGIC & SCORING ---
+        function resetModeAndModifiers() {
+            state.currentMode = null;
+            state.modifiers = { contra: false, recontra: false };
+            ['scan-mode-screen', 'manual-mode-screen'].forEach(id => {
+                const screen = dom[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())];
+                if (!screen) return;
+                screen.querySelectorAll('button.bg-belot-blue').forEach(btn => {
+                    btn.classList.remove('bg-belot-blue', 'text-white');
+                    btn.classList.add('bg-gray-200', 'text-gray-800');
+                });
+            });
+        }
+        
+        function selectMode(mode, button) {
+            state.currentMode = mode;
+            const parent = button.parentElement;
+            parent.querySelectorAll('button').forEach(btn => {
+                btn.classList.remove('bg-belot-blue', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-800');
+            });
+            button.classList.remove('bg-gray-200', 'text-gray-800');
+            button.classList.add('bg-belot-blue', 'text-white');
+        }
+
+        function toggleModifier(modifier, button) {
+            const wasActive = state.modifiers[modifier];
+            const parent = button.parentElement;
+            state.modifiers.contra = false;
+            state.modifiers.recontra = false;
+            if (!wasActive) {
+                state.modifiers[modifier] = true;
+            }
+            parent.querySelectorAll('button').forEach(btn => {
+                const btnText = btn.textContent.toLowerCase();
+                let btnModifier;
+                if (btnText.includes('реконтра')) { btnModifier = 'recontra'; } 
+                else if (btnText.includes('контра')) { btnModifier = 'contra'; }
+                if (btnModifier) {
+                    btn.classList.toggle('bg-belot-blue', state.modifiers[btnModifier]);
+                    btn.classList.toggle('text-white', state.modifiers[btnModifier]);
+                    btn.classList.toggle('bg-gray-200', !state.modifiers[btnModifier]);
+                    btn.classList.toggle('text-gray-800', !state.modifiers[btnModifier]);
+                }
+            });
+        }
+        
+        function proceedToNextStep(nextScreenId) {
+            if (!state.currentMode) return alert('Моля, изберете режим на игра.');
+            if (nextScreenId === 'manual-input-screen') prepareBonusScreen('manual');
+            showScreen(nextScreenId);
+        }
+
+        function proceedToScanOrBonus() {
+            if (!state.currentMode) return alert('Моля, изберете режим на игра.');
+            const totalGamePoints = (state.currentMode === 'on-suit') ? 162 : (state.currentMode === 'all-trump' ? 258 : 260);
+            state.pendingPoints.fromScan = Math.floor(Math.random() * (totalGamePoints / 2)) + (totalGamePoints / 2 - 40);
+            state.pendingPoints.bonus = 0;
+            if (state.currentMode === 'no-trump') {
+                calculateAndShowFinalScore(state.pendingPoints.fromScan);
+            } else {
+                prepareBonusScreen('scan');
+                showScreen('scan-bonus-screen');
+            }
+        }
+
+        function prepareBonusScreen(type) {
+            const container = (type === 'scan') ? dom.scanBonusesContainer : dom.manualBonusesContainer;
+            setupBonusButtons(container, type);
+            container.querySelectorAll('button').forEach(button => {
+                button.disabled = state.currentMode === 'no-trump';
+            });
+            if(type === 'scan') dom.scannedPointsDisplay.textContent = state.pendingPoints.fromScan;
+            if(type === 'manual') dom.manualPointsInput.value = '';
+        }
+
+        const bonusButtonsHTML = `
+            <button data-points="20" class="py-3 bg-gray-200 rounded-lg font-medium">Белот <span class="block text-xs">(+20)</span></button>
+            <button data-points="20" class="py-3 bg-gray-200 rounded-lg font-medium">Терца <span class="block text-xs">(+20)</span></button>
+            <button data-points="50" class="py-3 bg-gray-200 rounded-lg font-medium">Кварта <span class="block text-xs">(+50)</span></button>
+            <button data-points="100" class="py-3 bg-gray-200 rounded-lg font-medium">100 <span class="block text-xs">(Квинта/Каре)</span></button>
+            <button data-points="150" class="py-3 bg-gray-200 rounded-lg font-medium">150 <span class="block text-xs">(Каре 9-ки)</span></button>
+            <button data-points="200" class="py-3 bg-gray-200 rounded-lg font-medium">200 <span class="block text-xs">(Каре J)</span></button>`;
+        
+        function setupBonusButtons(container, type) {
+            container.innerHTML = bonusButtonsHTML;
+            container.querySelectorAll('button').forEach(button => {
+                button.classList.add('bonus-button');
+                button.onclick = (event) => {
+                    if (button.disabled) return;
+                    addBonusPoints(parseInt(button.dataset.points), type, event.currentTarget);
+                };
+            });
+        }
+        
+        function addBonusPoints(points, type, clickedButton) {
+            if (type === 'manual') {
+                dom.manualPointsInput.value = (parseInt(dom.manualPointsInput.value) || 0) + points;
+            } else if (type === 'scan') {
+                state.pendingPoints.bonus += points;
+                dom.scannedPointsDisplay.textContent = state.pendingPoints.fromScan + state.pendingPoints.bonus;
+            }
+            if (clickedButton) {
+                const pointsEffect = document.createElement('span');
+                pointsEffect.className = 'floating-points';
+                pointsEffect.textContent = `+${points}`;
+                clickedButton.appendChild(pointsEffect);
+                setTimeout(() => { pointsEffect.remove(); }, 1000);
+            }
+        }
+        
+        function submitBonuses(type) {
+            const basePoints = (type === 'manual') ? (parseInt(dom.manualPointsInput.value) || 0) : state.pendingPoints.fromScan;
+            const bonusPoints = (type === 'manual') ? 0 : state.pendingPoints.bonus;
+            if (type === 'manual' && !basePoints > 0) return alert('Моля, въведете точки.');
+            calculateAndShowFinalScore(basePoints + bonusPoints);
+        }
+
+        function calculateAndShowFinalScore(rawPoints) {
+            let finalPoints = rawPoints;
+            if (state.modifiers.contra) finalPoints *= 2;
+            if (state.modifiers.recontra) finalPoints *= 4;
+            if (state.currentMode === 'no-trump') finalPoints *= 2;
+            const roundedPoints = roundBelotPoints(finalPoints);
+            state.pendingPoints.raw = Math.round(rawPoints);
+            state.pendingPoints.rounded = roundedPoints;
+            dom.rawPoints.textContent = state.pendingPoints.raw;
+            dom.addedPoints.textContent = state.pendingPoints.rounded;
+            showScreen('confirm-screen');
+        }
+
+        function roundBelotPoints(raw) {
+            const points = Math.round(raw);
+            const lastDigit = points % 10;
+            const base = Math.floor(points / 10);
+            if (state.currentMode === 'no-trump') return (lastDigit > 4) ? base + 1 : base;
+            return (lastDigit > 5) ? base + 1 : base;
+        }
+
+        function addPointsToTeam(team) {
+            if (!state.dealer.isSet) {
+                alert('Моля, изберете кой раздава пръв, като кликнете върху жълтия бутон.');
+                showDealerModal();
+                return;
+            }
+            state.scores[team] += state.pendingPoints.rounded;
+            state.history.push({ team, points: state.pendingPoints.rounded, date: new Date().toLocaleTimeString('bg-BG') });
+            state.dealer.current = (state.dealer.current + 1) % 4;
+            updateDealerDisplay();
+            updateScoresDisplay();
+            updateHistoryDisplay();
+            checkVictory(); // This is called last, which is correct
+        }
+        
+        function checkVictory() {
+            let winner = null;
+            if (state.scores.myTeam >= 151) winner = 'myTeam';
+            else if (state.scores.opponent >= 151) winner = 'opponent';
+            
+            if (winner) {
+                state.victory = true; // Set victory flag
+                state.wins[winner]++;
+                dom.victoryMessage.textContent = "ПОБЕДА!";
+                dom.victorySubmessage.textContent = `Отбор "${winner === 'myTeam' ? 'Ние' : 'Вие'}" достигна ${state.scores[winner]} точки!`;
+                showVictoryAnimation();
+                // Score reset is now handled in hideVictory()
+            } else {
+                state.victory = false;
+                showScreen('start-screen'); // Only return to start screen if no one won
+            }
+        }
+        
+        function resetGame() {
+            if (confirm('Сигурни ли сте, че искате да нулирате играта (резултат и победи)?')) {
+                state.scores = { myTeam: 0, opponent: 0 };
+                state.wins = { myTeam: 0, opponent: 0 };
+                state.history = [];
+                state.dealer.isSet = false;
+                state.dealer.current = null;
+                updateDealerDisplay();
+                updateScoresDisplay();
+                updateHistoryDisplay();
+            }
+        }
+        
+        function clearHistory() { 
+            if (confirm('Сигурни ли сте, че искате да изчистите историята? (Това няма да нулира точките)')) {
+                state.history = []; 
+                updateHistoryDisplay(); 
+            }
+        }
+
+        function hideVictory() {
+            dom.victoryContainer.classList.add('hidden');
+            
+            // This is the new game logic
+            state.scores = { myTeam: 0, opponent: 0 };
+            state.history = [];
+            state.dealer.isSet = false;
+            state.dealer.current = null;
+
+            updateDealerDisplay();
+            updateScoresDisplay();
+            updateHistoryDisplay();
+            showScreen('start-screen');
+        }
+
+        // --- DISPLAY UPDATES ---
+        function updateScoresDisplay() {
+            dom.myTeamTotal.textContent = state.scores.myTeam;
+            dom.opponentTotal.textContent = state.scores.opponent;
+            dom.totalWins.textContent = `${state.wins.myTeam}:${state.wins.opponent}`;
+        }
+        
+        function updateHistoryDisplay() {
+            if (dom.undoButton) {
+                dom.undoButton.disabled = state.history.length === 0;
+            }
+            if (state.history.length === 0) {
+                dom.historyList.innerHTML = '<div class="text-center py-8 text-gray-500">Няма записани ръце.</div>';
+                return;
+            }
+            dom.historyList.innerHTML = state.history.map(item => `
+                <div class="history-item p-3 rounded-lg">
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">${item.team === 'myTeam' ? 'Ние' : 'Вие'}: <strong class="text-lg">+${item.points}</strong></span>
+                        <span class="text-xs text-gray-500">${item.date}</span>
+                    </div>
+                </div>`).join('');
+        }
+
+        function updateDealerDisplay() {
+            if (state.dealer.isSet) {
+                dom.dealerFab.textContent = state.dealer.positions[state.dealer.current];
+                dom.dealerFab.classList.add('cursor-not-allowed');
+            } else {
+                dom.dealerFab.textContent = '?';
+                dom.dealerFab.classList.remove('cursor-not-allowed');
+            }
+        }
+        
+        function showVictoryAnimation() {
+            state.victory = true;
+            dom.victoryContainer.classList.remove('hidden');
+            dom.confettiContainer.innerHTML = Array.from({length: 100}).map(() => 
+                `<div class="confetti" style="left:${Math.random()*100}%;animation-delay:${Math.random()*5}s;background-color:hsl(${Math.random()*360},70%,60%)"></div>`
+            ).join('');
+        }
+    </script>
+<p style="border-radius: 8px; text-align: center; font-size: 12px; color: #fff; margin-top: 16px;position: fixed; left: 8px; bottom: 8px; z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 4px 8px;">Made with <img src="https://enzostvs-deepsite.hf.space/logo.svg" alt="DeepSite Logo" style="width: 16px; height: 16px; vertical-align: middle;display:inline-block;margin-right:3px;filter:brightness(0) invert(1);"><a href="https://enzostvs-deepsite.hf.space" style="color: #fff;text-decoration: underline;" target="_blank" >DeepSite</a> - 🧬 <a href="https://enzostvs-deepsite.hf.space?remix=KrastaV23/belot-project" style="color: #fff;text-decoration: underline;" target="_blank" >Remix</a></p></body>
+</html>
