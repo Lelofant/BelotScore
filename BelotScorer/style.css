@@ -1,0 +1,180 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f0f4f8;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    transition: all 0.2s;
+}
+
+.screen {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.3s;
+    background-color: inherit;
+    flex-direction: column;
+}
+
+.active-screen {
+    display: flex;
+}
+
+.history-item {
+    border-left: 4px solid #2b6cb0;
+}
+
+/* Dark Mode Styles */
+.dark-mode {
+    background: linear-gradient(135deg, #1a1f35 0%, #0f1419 100%);
+    color: #e2e8f0;
+}
+
+.dark-mode .max-w-md {
+    background: linear-gradient(180deg, #1e2539 0%, #151a28 100%);
+}
+
+.dark-mode .card {
+    background: linear-gradient(135deg, #242d45 0%, #1a2133 100%);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.dark-mode .history-item {
+    background: linear-gradient(135deg, #2a3347 0%, #1f2736 100%);
+    border-left: 4px solid #3b82f6;
+}
+
+.dark-mode * {
+    transition: background-color .3s, color .3s, border-color .3s;
+}
+
+.dark-mode input,
+.dark-mode button:not(.bg-belot-blue):not(.bg-belot-red):not(.bg-belot-green):not(.bg-belot-gold) {
+    background: linear-gradient(135deg, #2d3748 0%, #1f2937 100%);
+    color: #e2e8f0;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.dark-mode .bg-gray-100 {
+    background: linear-gradient(135deg, #2d3748 0%, #1f2937 100%);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.dark-mode .bg-gray-200 {
+    background: linear-gradient(135deg, #374151 0%, #2d3748 100%);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.dark-mode .text-gray-600 {
+    color: #94a3b8;
+}
+
+.dark-mode .text-gray-800 {
+    color: #cbd5e1;
+}
+
+.dark-mode .text-gray-500 {
+    color: #94a3b8;
+}
+
+.dark-mode button:disabled {
+    background: #1f2937;
+    color: #4b5563;
+    opacity: 0.5;
+}
+
+.dark-mode h1, .dark-mode h2, .dark-mode h3 {
+    color: #f1f5f9;
+}
+
+button.bg-gray-200:active {
+    background-color: #d1d5db;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Dealer Quadrant Styles */
+.dealer-quadrant {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    background-color: #e2e8f0;
+    color: #4a5568;
+}
+
+.dark-mode .dealer-quadrant {
+    background-color: #4a5568;
+    color: #e2e8f0;
+}
+
+.dealer-quadrant:nth-child(1) {
+    border-top-left-radius: 100%;
+}
+
+.dealer-quadrant:nth-child(2) {
+    border-top-right-radius: 100%;
+}
+
+.dealer-quadrant:nth-child(3) {
+    border-bottom-left-radius: 100%;
+}
+
+.dealer-quadrant:nth-child(4) {
+    border-bottom-right-radius: 100%;
+}
+
+.dealer-quadrant:hover {
+    background-color: #d69e2e;
+    color: white;
+}
+
+.dealer-quadrant span {
+    transform: rotate(-45deg);
+}
+
+/* Bonus Animations */
+.bonus-button {
+    position: relative;
+    overflow: hidden;
+}
+
+.floating-points {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #38a169;
+    pointer-events: none;
+    animation: float-up 1s ease-out forwards;
+}
+
+@keyframes float-up {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) translateY(-50px);
+    }
+}

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Белот Точкуване</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'belot-red': '#c53030',
+                        'belot-blue': '#2b6cb0',
+                        'belot-green': '#38a169',
+                        'belot-gold': '#d69e2e',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-100">
+    <div class="max-w-md mx-auto h-screen relative overflow-hidden bg-white">
+        
+        <div id="start-screen" class="screen active-screen p-6 justify-center">
+            <div class="flex flex-col items-center w-full">
+                <div class="mb-8 text-center">
+                    <div class="w-24 h-24 mx-auto bg-gradient-to-r from-belot-red to-belot-blue rounded-full flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-layer-group text-white text-4xl"></i>
+                    </div>
+                    <h1 class="text-3xl font-bold text-gray-800">Белот Точкуване</h1>
+                    <p class="text-gray-600 mt-2">Автоматично изчисляване на точки</p>
+                </div>
+
+                <div class="w-full space-y-4">
+                    <div class="card p-4">
+                        <div class="flex justify-between text-lg">
+                            <span class="text-belot-blue font-medium">Ние: <span id="my-team-total">0</span></span>
+                            <span class="text-belot-red font-medium">Вие: <span id="opponent-total">0</span></span>
+                        </div>
+                        <div class="text-center mt-2">
+                            <span class="text-sm text-gray-600">Победи: <span id="total-wins" class="font-medium">0:0</span></span>
+                        </div>
+                        <button onclick="resetGame()" class="w-full mt-3 py-2 bg-gray-200 rounded-lg font-medium">Нулирай играта</button>
+                    </div>
+                    
+                    <button onclick="showScreen('scan-mode-screen')" class="w-full py-4 bg-belot-blue text-white rounded-xl font-medium flex items-center justify-center text-lg">
+                        <i class="fas fa-camera mr-3"></i> Сканирай карти
+                    </button>
+                    
+                    <button onclick="showScreen('manual-mode-screen')" class="w-full py-4 bg-gray-200 text-gray-800 rounded-xl font-medium flex items-center justify-center text-lg">
+                        <i class="fas fa-keyboard mr-3"></i> Ръчно въведи точки
+                    </button>
+
+                    <div id="camera-scan-wrapper" class="hidden mt-4">
+                        <video id="camera" autoplay playsinline class="w-full rounded-xl border border-gray-300"></video>
+                        <button id="scan-button" onclick="startCardScan()" class="w-full py-3 mt-4 bg-belot-blue text-white text-lg rounded-xl">
+                            Сканирай карти
+                        </button>
+                    </div>
+
+                    <div class="flex justify-between mt-8">
+                        <button onclick="showScreen('history-screen')" class="px-4 py-2 bg-gray-100 rounded-lg" aria-label="История">
+                            <i class="fas fa-history text-belot-blue"></i>
+                        </button>
+                        <button onclick="toggleDarkMode()" class="px-4 py-2 bg-gray-100 rounded-lg" aria-label="Тъмен режим">
+                            <i id="dark-mode-icon" class="fas fa-moon text-gray-700"></i>
+                        </button>
+                        <button onclick="showScreen('settings-screen')" class="px-4 py-2 bg-gray-100 rounded-lg" aria-label="Настройки">
+                            <i class="fas fa-cog text-gray-700"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="scan-mode-screen" class="screen p-6"></div>
+        <div id="manual-mode-screen" class="screen p-6"></div>
+
+        <div id="scan-bonus-screen" class="screen p-6">
+            <div class="flex items-center mb-6">
+                <button onclick="showScreen('scan-mode-screen')" class="p-2 rounded-full bg-gray-100">
+                    <i class="fas fa-arrow-left text-gray-700"></i>
+                </button>
+                <h2 class="text-2xl font-bold ml-4">Добавяне на Бонуси</h2>
+            </div>
+            <div class="card p-4 mb-4 text-center">
+                <h3 class="font-medium text-lg">Точки от сканиране:</h3>
+                <p id="scanned-points-display" class="text-4xl font-bold text-belot-blue">0</p>
+            </div>
+            <div class="card p-4">
+                <h3 class="font-medium mb-3 text-center text-lg">Добавете бонуси (премии)</h3>
+                <div id="scan-bonuses-container" class="grid grid-cols-3 gap-2"></div>
+            </div>
+            <button onclick="submitBonuses('scan')" class="w-full py-4 mt-auto bg-belot-blue text-white rounded-xl font-medium text-lg">
+                Изчисли резултат
+            </button>
+        </div>
+
+        <div id="manual-input-screen" class="screen p-6">
+            <div class="flex items-center mb-6">
+                <button onclick="showScreen('manual-mode-screen')" class="p-2 rounded-full bg-gray-100">
+                    <i class="fas fa-arrow-left text-gray-700"></i>
+                </button>
+                <h2 class="text-2xl font-bold ml-4">Ръчно въвеждане</h2>
+            </div>
+            <div class="card p-4 mb-4">
+                <h3 class="font-medium mb-3 text-center text-lg">1. Въведете точки от карти</h3>
+                <input type="number" id="manual-points-input" inputmode="numeric" class="w-full p-4 text-3xl border-2 border-gray-200 rounded-xl text-center" placeholder="0" max="260">
+            </div>
+            <div class="card p-4">
+                <h3 class="font-medium mb-3 text-center text-lg">2. Добавете бонуси (премии)</h3>
+                <div id="manual-bonuses-container" class="grid grid-cols-3 gap-2"></div>
+            </div>
+            <button onclick="submitBonuses('manual')" class="w-full py-4 mt-auto bg-belot-blue text-white rounded-xl font-medium text-lg">
+                Изчисли резултат
+            </button>
+        </div>
+
+        <div id="confirm-screen" class="screen p-6 justify-center">
+            <div class="flex flex-col items-center text-center w-full">
+                <h2 class="text-2xl font-bold mb-6">Резултат от ръката</h2>
+                <div class="w-full card p-6 mb-6">
+                    <div class="mb-4">
+                        <div class="text-5xl font-bold text-belot-blue" id="raw-points">0</div>
+                        <div class="text-gray-600">Сурови точки</div>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-bold text-belot-green" id="added-points">0</div>
+                        <div class="text-gray-600">Точки за добавяне</div>
+                    </div>
+                </div>
+                <h3 class="font-medium mb-3">Добави точките към:</h3>
+                <div class="grid grid-cols-2 gap-4 w-full">
+                    <button onclick="addPointsToTeam('myTeam')" class="py-3 bg-belot-blue text-white rounded-lg font-medium">Ние</button>
+                    <button onclick="addPointsToTeam('opponent')" class="py-3 bg-belot-red text-white rounded-lg font-medium">Вие</button>
+                </div>
+                <button onclick="showScreen('start-screen')" class="mt-4 px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium">Отказ</button>
+            </div>
+        </div>
+
+        <div id="history-screen" class="screen p-6">
+            <div class="flex items-center mb-6 flex-shrink-0">
+                <button onclick="showScreen('start-screen')" class="p-2 rounded-full bg-gray-100">
+                    <i class="fas fa-arrow-left text-gray-700"></i>
+                </button>
+                <h2 class="text-2xl font-bold ml-4">История</h2>
+            </div>
+            <div id="history-list" class="space-y-3 flex-grow overflow-y-auto pr-2">
+                <div class="text-center py-8 text-gray-500">Няма записани ръце.</div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mt-4 flex-shrink-0">
+                <button id="undo-button" onclick="undoLastHand()" class="w-full py-2 bg-belot-gold text-white rounded-lg font-medium">
+                    <i class="fas fa-undo mr-1"></i> Отмени Последно
+                </button>
+                <button onclick="clearHistory()" class="w-full py-2 bg-belot-red text-white rounded-lg font-medium">
+                    <i class="fas fa-trash mr-1"></i> Изчисти Всичко
+                </button>
+            </div>
+        </div>
+
+        <div id="settings-screen" class="screen p-6">
+            <div class="flex items-center mb-6">
+                <button onclick="showScreen('start-screen')" class="p-2 rounded-full bg-gray-100">
+                    <i class="fas fa-arrow-left text-gray-700"></i>
+                </button>
+                <h2 class="text-2xl font-bold ml-4">Настройки</h2>
+            </div>
+            <div class="card p-6 rounded-xl">
+                <h3 class="font-medium text-lg mb-4">Информация</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between"><span class="text-gray-600">Версия</span><span>1.5.0</span></div>
+                    <div class="flex items-center justify-between"><span class="text-gray-600">Разработчик</span><span>Белот Екип</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="victory-container" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+            <div class="absolute inset-0 bg-black bg-opacity-70"></div>
+            <div id="confetti-container" class="absolute inset-0"></div>
+            <div class="relative z-10 text-center p-8 bg-white rounded-xl max-w-sm card">
+                <div class="text-6xl mb-4">🎉</div>
+                <h2 id="victory-message" class="text-2xl font-bold mb-2">ПОБЕДА!</h2>
+                <p id="victory-submessage" class="mb-4">Отборът Ви достигна 151 точки!</p>
+                <button onclick="hideVictory()" class="px-6 py-2 bg-belot-blue text-white rounded-lg font-medium">Нова игра</button>
+            </div>
+        </div>
+
+        <button id="dealer-fab" onclick="if(!state.dealer.isSet) showDealerModal()" class="fixed bottom-20 right-5 z-20 w-14 h-14 bg-belot-gold text-white rounded-full shadow-lg flex items-center justify-center text-xl font-bold">?</button>
+
+        <div id="dealer-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center">
+            <div class="absolute inset-0 bg-black bg-opacity-60" onclick="hideDealerModal()"></div>
+            <div class="relative bg-white dark:bg-gray-800 rounded-xl p-6 card">
+                <h3 class="font-medium text-center text-lg mb-4">Избери кой раздава пръв</h3>
+                <div class="relative w-40 h-40 mx-auto">
+                    <div id="dealer-selector" class="w-full h-full rounded-full grid grid-cols-2 grid-rows-2 gap-1 transform rotate-45">
+                        <div class="dealer-quadrant" data-dealer-index="0"><span>N</span></div>
+                        <div class="dealer-quadrant" data-dealer-index="1"><span>E</span></div>
+                        <div class="dealer-quadrant" data-dealer-index="3"><span>W</span></div>
+                        <div class="dealer-quadrant" data-dealer-index="2"><span>S</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
